@@ -4,7 +4,7 @@ import numpy as np
 import os
 from datetime import datetime
 
-# Environment boundaries (matching previous bounds)
+# Set boundary parameters
 wp_bound_x = [-100, 100]
 wp_bound_y = [-100, 100]
 wp_z = 50
@@ -17,35 +17,19 @@ SPACING_X = 20
 SPACING_Y = 20
 
 # Flight parameters
-SPEED = 5.0        # movement speed
-PERIOD_X = 10.0    # seconds for one complete X oscillation
-PERIOD_Y = 15.0    # seconds for one complete Y oscillation
-DURATION = 60      # total flight duration in seconds
+SPEED = 5.0        # movement speed in m/s
+DURATION = 35     # total flight duration in seconds
+SAMPLE_TIME = 0.1  # time between pose updates
 
 # Initialize AirSim
 client = airsim.MultirotorClient()
 client.confirmConnection()
-
-# Reset the environment
 client.reset()
-time.sleep(2)  # Wait for reset to complete
+time.sleep(2)
 
-# Initialize first drone
-vehicle_name = "Drone0"
-client.enableApiControl(True, vehicle_name)
-client.armDisarm(True, vehicle_name)
-
-# Test basic control with first drone before proceeding
-print(f"Testing control of {vehicle_name}...")
-client.takeoffAsync(vehicle_name=vehicle_name).join()
-client.landAsync(vehicle_name=vehicle_name).join()
-
-print("Basic control test successful. Press Enter to continue with formation flight...")
-input()
-
-# Create and initialize rest of vehicle clients
-vehicles = [vehicle_name]  # Start with the tested drone
-for i in range(1, N_CAMERAS):
+# Initialize drones
+vehicles = []
+for i in range(N_CAMERAS):
     vehicle_name = f"Drone{i}"
     vehicles.append(vehicle_name)
     client.enableApiControl(True, vehicle_name)
@@ -59,15 +43,6 @@ for vehicle in vehicles:
 for task in tasks:
     task.join()
 
-# Create timestamp and directories for recording
-timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-base_path = os.path.join(os.path.expanduser('~'), 'OneDrive', 'Documents', 'AirSim', timestamp)
-
-# Create directories and start recording for each drone
-for vehicle in vehicles:
-    drone_path = os.path.join(base_path, vehicle)
-    os.makedirs(drone_path, exist_ok=True)
-
 # Generate formation offsets
 formation_offsets = []
 for row in range(FORMATION_ROWS):
@@ -76,69 +51,93 @@ for row in range(FORMATION_ROWS):
         offset_y = (row - (FORMATION_ROWS-1)/2) * SPACING_Y
         formation_offsets.append((offset_x, offset_y))
 
-print("Starting formation flight...")
-# Main flight loop
+# Create timestamp and directories for recording
+timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+base_path = os.path.join(os.path.expanduser('~'), 'OneDrive', 'Documents', 'AirSim', timestamp)
+
+# Create directories for each drone
+for vehicle in vehicles:
+    drone_path = os.path.join(base_path, vehicle)
+    os.makedirs(drone_path, exist_ok=True)
+
+# Create airsim_rec.txt files for each drone
+for vehicle in vehicles:
+    drone_path = os.path.join(base_path, vehicle)
+    with open(os.path.join(drone_path, 'airsim_rec.txt'), 'w') as f:
+        f.write('VehicleName\tTimeStamp\tPOS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z\tImageFile\n')
+
+# Initialize tracking variables
 start_time = time.time()
-frame_count = 0
+last_positions = [(0, 0, wp_z) for _ in range(N_CAMERAS)]
+
 try:
     while time.time() - start_time < DURATION:
         t = time.time() - start_time
-        frame_count += 1
         
-        # Calculate formation center position
-        x = wp_bound_x[0] + (wp_bound_x[1] - wp_bound_x[0]) * (0.5 + 0.5 * np.sin(2 * np.pi * t / PERIOD_X))
-        y = wp_bound_y[0] + (wp_bound_y[1] - wp_bound_y[0]) * (0.5 + 0.5 * np.sin(2 * np.pi * t / PERIOD_Y))
-        z = -wp_z  # Note: AirSim uses NED coordinates
+        # Calculate base position (figure-8 pattern)
+        scale_x = (wp_bound_x[1] - wp_bound_x[0]) / 2
+        scale_y = (wp_bound_y[1] - wp_bound_y[0]) / 2
+        center_x = (wp_bound_x[1] + wp_bound_x[0]) / 2
+        center_y = (wp_bound_y[1] + wp_bound_y[0]) / 2
         
-        # Log formation data
-        log_data = {
-            'timestamp': t,
-            'frame': frame_count,
-            'formation_center_x': x,
-            'formation_center_y': y,
-            'formation_center_z': z
-        }
+        # Slower, smoother figure-8
+        x = center_x + scale_x * np.sin(2 * np.pi * t / 60)
+        y = center_y + scale_y * np.sin(4 * np.pi * t / 60)
+        z = wp_z
         
-        with open(os.path.join(base_path, 'formation_log.txt'), 'a') as f:
-            if frame_count == 1:
-                f.write('\t'.join(log_data.keys()) + '\n')
-            f.write('\t'.join(map(str, log_data.values())) + '\n')
-        
-        # Move drones in formation
-        tasks = []
-        for vehicle, offset in zip(vehicles, formation_offsets):
-            # Calculate drone position in formation
-            drone_x = x + offset[0]
-            drone_y = y + offset[1]
+        # Move each drone in formation
+        for i, (vehicle, offset) in enumerate(zip(vehicles, formation_offsets)):
+            # Calculate drone position with smooth transition
+            target_x = x + offset[0]
+            target_y = y + offset[1]
+            target_z = z
             
-            # Move drone to position
-            tasks.append(
-                client.moveToPositionAsync(
-                    drone_x, drone_y, z, 
-                    SPEED,
-                    vehicle_name=vehicle
-                )
+            # Smooth position transitions
+            curr_x, curr_y, curr_z = last_positions[i]
+            smooth_factor = 0.1  # lower = smoother movement
+            
+            drone_x = curr_x + (target_x - curr_x) * smooth_factor
+            drone_y = curr_y + (target_y - curr_y) * smooth_factor
+            drone_z = curr_z + (target_z - curr_z) * smooth_factor
+            
+            last_positions[i] = (drone_x, drone_y, drone_z)
+            
+            # Set the pose with fixed orientation (looking straight down)
+            pose = airsim.Pose(
+                airsim.Vector3r(drone_x, -drone_y, -drone_z),
+                airsim.Quaternionr(0, 0, 0, 0) 
             )
+            client.simSetVehiclePose(pose, True, vehicle_name=vehicle)
             
-            # Capture images
+            # Capture images and record pose data
             responses = client.simGetImages([
                 airsim.ImageRequest("0", airsim.ImageType.Scene),
                 airsim.ImageRequest("0", airsim.ImageType.DepthVis),
                 airsim.ImageRequest("0", airsim.ImageType.Segmentation)
             ], vehicle_name=vehicle)
             
-            # Save images
+            # Save images and record data
             image_dir = os.path.join(base_path, vehicle, 'images')
             os.makedirs(image_dir, exist_ok=True)
+            
+            # Generate filenames and save images
+            image_files = []
             for idx, response in enumerate(responses):
-                filename = os.path.join(image_dir, f'frame_{frame_count:06d}_{idx}.png')
-                airsim.write_file(filename, response.image_data_uint8)
+                if idx == 1:  # Depth image
+                    filename = f'frame_{int(t*100):06d}_{idx}.pfm'
+                    airsim.write_pfm(os.path.join(image_dir, filename), airsim.get_pfm_array(response))
+                else:  # RGB and Segmentation images
+                    filename = f'frame_{int(t*100):06d}_{idx}.png'
+                    airsim.write_file(os.path.join(image_dir, filename), response.image_data_uint8)
+                image_files.append(filename)
+            
+            # Record pose data
+            with open(os.path.join(base_path, vehicle, 'airsim_rec.txt'), 'a') as f:
+                q = pose.orientation
+                image_names = ';'.join(image_files)
+                f.write(f'{vehicle}\t{int(t*1e9)}\t{drone_x}\t{drone_y}\t{drone_z}\t{q.w_val}\t{q.x_val}\t{q.y_val}\t{q.z_val}\t{image_names}\n')
         
-        # Wait for all drones to reach their positions
-        for task in tasks:
-            task.join()
-        
-        time.sleep(0.05)  # 20Hz update rate
+        time.sleep(SAMPLE_TIME)
 
 finally:
     # Land all drones
