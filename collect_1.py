@@ -10,7 +10,7 @@ wp_z = 50
 # Flight parameters
 SPEED = 5.0        # movement speed in m/s
 DURATION = 35     # total flight duration in seconds
-SAMPLE_TIME = 0.1  # time between pose updates
+SAMPLE_TIME = 0.  # time between pose updates
 
 # Camera parameters
 PITCH_RANGE = [-90, -45]  # degrees, -90 is down, -45 is forward-down

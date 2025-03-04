@@ -1,0 +1,156 @@
+{
+    "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings.md",
+    "SettingsVersion": 1.2,
+    "SimMode": "Multirotor",
+    "ClockSpeed": 1,
+    "Recording": {
+        "RecordOnMove": true,
+        "RecordInterval": 0.05,
+        "Cameras": [
+            {
+                "CameraName": "0",
+                "ImageType": 0,
+                "PixelsAsFloat": false,
+                "Compress": true
+            },
+            {
+                "CameraName": "0",
+                "ImageType": 5,
+                "PixelsAsFloat": false,
+                "Compress": true
+            },
+            {
+                "CameraName": "0",
+                "ImageType": 1,
+                "PixelsAsFloat": true,
+                "Compress": false
+            }
+        ]
+    },
+    "CameraDefaults": {
+        "CaptureSettings": [
+            {
+                "ImageType": 0,
+                "Width": 256,
+                "Height": 192,
+                "FOV_Degrees": 90,
+                "AutoExposureSpeed": 100,
+                "MotionBlurAmount": 0
+            },
+            {
+                "ImageType": 1,
+                "Width": 256,
+                "Height": 192,
+                "FOV_Degrees": 90,
+                "AutoExposureSpeed": 100,
+                "MotionBlurAmount": 0
+            },
+            {
+                "ImageType": 5,
+                "Width": 256,
+                "Height": 192,
+                "FOV_Degrees": 90,
+                "AutoExposureSpeed": 100,
+                "MotionBlurAmount": 0
+            }
+        ]
+    },
+    "Vehicles": {
+        "Drone0": {
+            "VehicleType": "SimpleFlight",
+            "X": 0,
+            "Y": 0,
+            "Z": 0
+        },
+        "Drone1": {
+            "VehicleType": "SimpleFlight",
+            "X": 8,
+            "Y": 0,
+            "Z": 0
+        },
+        "Drone2": {
+            "VehicleType": "SimpleFlight",
+            "X": 16,
+            "Y": 0,
+            "Z": 0
+        },
+        "Drone3": {
+            "VehicleType": "SimpleFlight",
+            "X": 24,
+            "Y": 0,
+            "Z": 0
+        },
+        "Drone4": {
+            "VehicleType": "SimpleFlight",
+            "X": 0,
+            "Y": 8,
+            "Z": 0
+        },
+        "Drone5": {
+            "VehicleType": "SimpleFlight",
+            "X": 8,
+            "Y": 8,
+            "Z": 0
+        },
+        "Drone6": {
+            "VehicleType": "SimpleFlight",
+            "X": 16,
+            "Y": 8,
+            "Z": 0
+        },
+        "Drone7": {
+            "VehicleType": "SimpleFlight",
+            "X": 24,
+            "Y": 8,
+            "Z": 0
+        },
+        "Drone8": {
+            "VehicleType": "SimpleFlight",
+            "X": 0,
+            "Y": 16,
+            "Z": 0
+        },
+        "Drone9": {
+            "VehicleType": "SimpleFlight",
+            "X": 8,
+            "Y": 16,
+            "Z": 0
+        },
+        "Drone10": {
+            "VehicleType": "SimpleFlight",
+            "X": 16,
+            "Y": 16,
+            "Z": 0
+        },
+        "Drone11": {
+            "VehicleType": "SimpleFlight",
+            "X": 24,
+            "Y": 16,
+            "Z": 0
+        },
+        "Drone12": {
+            "VehicleType": "SimpleFlight",
+            "X": 0,
+            "Y": 24,
+            "Z": 0
+        },
+        "Drone13": {
+            "VehicleType": "SimpleFlight",
+            "X": 8,
+            "Y": 24,
+            "Z": 0
+        },
+        "Drone14": {
+            "VehicleType": "SimpleFlight",
+            "X": 16,
+            "Y": 24,
+            "Z": 0
+        },
+        "Drone15": {
+            "VehicleType": "SimpleFlight",
+            "X": 24,
+            "Y": 24,
+            "Z": 0
+        }
+    }
+}
